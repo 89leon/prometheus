@@ -1,0 +1,31 @@
+Exporters are software that is deployed next to the application that you want to have metrics collected from. Instrumentation for exporters are known as custom collectors or ConstMetrics.
+
+How exporters work:
+
+Takes requests
+Gathers the data
+Formats the data
+Returns the data to Prometheus
+Databases:
+
+Consul exporter
+Memcached exporter
+MySQL server exporter
+Hardware:
+
+Node/system metrics exporter
+HTTP:
+
+HAProxy exporter
+Other monitoring systems:
+
+AWS CloudWatch exporter
+Collectd exporter
+Graphite exporter
+InfluxDB exporter
+JMX exporter
+SNMP exporter
+StatsD exporter
+Miscellaneous:
+
+Blackbox exporter

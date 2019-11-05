@@ -1,0 +1,119 @@
+
+- its a metrics-based monitoring system
+- developed by soundcloud in 2012 
+- written in Go
+- cloud native foundation project (became at 2016)
+- cat trigger alerts if some condition observed to be true 
+
+#features
+
+- multi-dimensional data mode 
+- flexible query language (promQL)
+- timeseries collection happens via pull model over HTTP
+
+
+
+Setting up the Kubernetes Master
+The following actions will be executed on the Kubernetes Master.
+
+Disable swap
+swapoff -a
+Edit: /etc/fstab
+vi /etc/fstab
+Comment out swap
+#/root/swap swap swap sw 0 0
+Add the Kubernetes repo
+cat << EOF > /etc/yum.repos.d/kubernetes.repo
+[kubernetes]
+name=Kubernetes
+baseurl=https://packages.cloud.google.com/yum/repos/kubernetes-el7-x86_64
+enabled=1
+gpgcheck=1
+repo_gpgcheck=1
+gpgkey=https://packages.cloud.google.com/yum/doc/yum-key.gpg https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
+exclude=kube*
+EOF
+Disable SELinux
+setenforce 0
+Permanently disable SELinux:
+vi /etc/selinux/config
+Change enforcing to disabled
+SELINUX=disabled
+Install Kubernetes 1.11.3
+yum install -y kubelet-1.11.3 kubeadm-1.11.3 kubectl-1.11.3 kubernetes-cni-0.6.0 --disableexcludes=kubernetes
+Start and enable the Kubernetes service
+systemctl start kubelet && systemctl enable kubelet
+Create the k8s.conf file:
+cat << EOF >  /etc/sysctl.d/k8s.conf
+net.bridge.bridge-nf-call-ip6tables = 1
+net.bridge.bridge-nf-call-iptables = 1
+EOF
+sysctl --system
+Create kube-config.yml:
+vi kube-config.yml
+Add the following to kube-config.yml:
+apiVersion: kubeadm.k8s.io/v1alpha1
+kind:
+kubernetesVersion: "v1.11.3"
+networking:
+  podSubnet: 10.244.0.0/16
+apiServerExtraArgs:
+  service-node-port-range: 8000-31274
+Initialize Kubernetes
+kubeadm init --config kube-config.yml
+Copy admin.conf to your home directory
+mkdir -p $HOME/.kube
+cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+chown $(id -u):$(id -g) $HOME/.kube/config
+Install flannel
+kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/v0.9.1/Documentation/kube-flannel.yml
+Patch flannel
+vi /etc/kubernetes/manifests/kube-controller-manager.yaml
+Add the following to kube-controller-manager.yaml:
+--allocate-node-cidrs=true
+--cluster-cidr=10.244.0.0/16
+Then reolad kubelete
+systemctl restart kubelet
+Setting up the Kubernetes Worker
+Now that the setup for the Kubernetes master is complete, we will begin the process of configuring the worker node. The following actions will be executed on the Kubernetes worker.
+
+Disable swap
+swapoff -a
+Edit: /etc/fstab
+vi /etc/fstab
+Comment out swap
+#/root/swap swap swap sw 0 0
+Add the Kubernetes repo
+cat << EOF > /etc/yum.repos.d/kubernetes.repo
+[kubernetes]
+name=Kubernetes
+baseurl=https://packages.cloud.google.com/yum/repos/kubernetes-el7-x86_64
+enabled=1
+gpgcheck=1
+repo_gpgcheck=1
+gpgkey=https://packages.cloud.google.com/yum/doc/yum-key.gpg https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
+exclude=kube*
+EOF
+Disable SELinux
+setenforce 0
+Permanently disable SELinux:
+vi /etc/selinux/config
+Change enforcing to disabled
+SELINUX=disabled
+Install Kubernetes 1.11.3
+yum install -y kubelet-1.11.3 kubeadm-1.11.3 kubectl-1.11.3 kubernetes-cni-0.6.0 --disableexcludes=kubernetes
+Start and enable the Kubernetes service
+systemctl start kubelet && systemctl enable kubelet
+Create the k8s.conf file:
+cat << EOF >  /etc/sysctl.d/k8s.conf
+net.bridge.bridge-nf-call-ip6tables = 1
+net.bridge.bridge-nf-call-iptables = 1
+EOF
+sysctl --system
+Use the join token to add the Worker Node to the cluster:
+kubeadm join < MASTER_IP >:6443 --token < TOKEN > --discovery-token-ca-cert-hash sha256:< HASH >
+On the master node, test to see if the cluster was created properly.
+
+Get a listing of the nodes:
+
+kubectl get nodes
